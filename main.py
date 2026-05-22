@@ -5,6 +5,7 @@ from data.get_ticker_data import (
 )
 from features.features import FeatureEngine
 from features.before_modelling import Before_Modelling
+from features.Modelling import Modelling
 import numpy as np
 import pandas as pd
 
@@ -43,7 +44,14 @@ forward_return_5d = close.pct_change(periods=5).shift(-5)
 # Cross‑Sectional Standardization
 cs_features = FeatureEngine.get_cs_z_score(stocks_shifted_features, min_stocks=50, exclude="vol_z")
 
+# Convert to a Panel
 panel_df = Before_Modelling.panel_construction(cs_features, forward_return_5d)
 
-ic_result = Before_Modelling.compute_ic_tstat(cs_features,panel_df)
-print(ic_result)
+# Calculate the IC and T-stat for each feature
+ic_result = Before_Modelling.compute_ic_tstat(cs_features, panel_df)
+
+# The IC and T-stat of Volume change almost equal 0, so we drop it before modelling
+selected_features = list(cs_features.keys())
+selected_features.remove("vol_change")
+
+
