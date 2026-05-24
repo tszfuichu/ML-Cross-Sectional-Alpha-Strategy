@@ -19,6 +19,32 @@ class Before_Modelling:
         return panel_df
 
     @staticmethod
+    def split_panel_data(panel_df,cs_features, split_date):
+
+        split_date = pd.to_datetime(split_date)
+        train_mask = panel_df.index.get_level_values("Date") < split_date
+        test_mask = panel_df.index.get_level_values("Date") >= split_date
+
+        train_panel = panel_df.loc[train_mask]
+        test_panel = panel_df.loc[test_mask]
+
+        print("Train period:", train_panel.index.get_level_values("Date").min(),
+              "to", train_panel.index.get_level_values("Date").max())
+
+        print("Test period:", test_panel.index.get_level_values("Date").min(),
+              "to", test_panel.index.get_level_values("Date").max())
+
+        train_dates = train_panel.index.get_level_values("Date").unique()
+
+        cs_features_train = {
+            f: df.loc[df.index.intersection(train_dates)]
+            for f, df in cs_features.items()
+        }
+
+        return train_panel,test_panel,cs_features_train
+
+
+    @staticmethod
     def compute_ic_tstat(cs_feature, panel_df):
         print("\nComputing Feature IC...")
 
@@ -45,5 +71,58 @@ class Before_Modelling:
         ic_table.sort_values("Mean_IC", ascending=False)
 
         return ic_table
+
+    @staticmethod
+    def feature_pre_selection(ic_df, cs_features, threshold=1.5, corr_threshold=0.7):
+
+        """
+        1. Filter by IC t-stat
+        2. Remove highly correlated features and Keep stronger IC feature
+        """
+
+        # 1.　Filter by IC t-stat
+        filtered_features = []
+
+        for feature in ic_df.index:
+            if abs(ic_df.loc[feature, "IC_tstat"]) > threshold:
+                filtered_features.append(feature)
+
+        print("After t-stat filter:", filtered_features)
+
+        # 2. Remove highly correlated features and Keep stronger IC feature
+
+        stacked_features = {}
+
+        for f in filtered_features:
+            stacked_features[f] = cs_features[f].stack()
+
+
+        feature_df = pd.DataFrame(stacked_features)
+
+        feature_df = feature_df.dropna()
+
+        corr_matrix = feature_df.corr().abs()
+
+        print("Correlation Matrix between features:", corr_matrix)
+
+        selected = filtered_features.copy()
+
+        for i in range(len(filtered_features)):
+            for j in range(i + 1, len(filtered_features)):
+
+                feature_1 = filtered_features[i]
+                feature_2 = filtered_features[j]
+
+                if feature_1 in selected and feature_2 in selected:
+                    if corr_matrix.loc[feature_1, feature_2] > corr_threshold:
+                        if abs(ic_df.loc[feature_1, "IC_tstat"]) >= abs(ic_df.loc[feature_2, "IC_tstat"]):
+                            selected.remove(feature_2)
+                        else:
+                            selected.remove(feature_1)
+
+        print("After correlation filter:", selected)
+        return selected
+
+
 
 
