@@ -79,32 +79,6 @@ class FeatureEngine:
             "vol_change": FeatureEngine.volume_change(volume, 5),
         }
 
-    # ========================================
-    # Staticmethod(Market Return, Vix z score)
-
-    @staticmethod
-    def market_return(close_index, period=5):
-        mar_return = close_index.pct_change(periods=period)
-        mar_return = mar_return.dropna(how = "all")
-        return mar_return
-
-    @staticmethod
-    def vix_zscore(vix, period=20):
-        mean = vix.rolling(period).mean()
-        std = vix.rolling(period).std()
-        z_score = (vix - mean) / std
-        z_score = z_score.dropna(how="all")
-        return z_score
-
-    # ========================================
-    # Get all the Feature by using the static function above
-
-    @staticmethod
-    def get_market_raw_feature(index,vix):
-        return {
-            "market_return_5d": FeatureEngine.market_return(index, period=5),
-            "vix_zscore_20d":  FeatureEngine.vix_zscore(vix, period=20)
-        }
 
     @staticmethod
     def shift_features(features: dict, periods: int = 1):
